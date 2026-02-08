@@ -78,12 +78,14 @@ function App() {
     const nowMs = now.getTime();
 
     reminders.forEach((r) => {
-      if (firedIds.has(r.id)) return;
-      const remindAt = new Date(r.remind_at);
-      if (remindAt.getTime() <= nowMs) {
+      const id = Number(r.id);
+      if (firedIds.has(id)) return;
+      const remindAtMs = new Date(r.remind_at).getTime();
+      if (Number.isNaN(remindAtMs)) return;
+      if (remindAtMs <= nowMs) {
         setFiredIds((prev) => {
           const next = new Set(prev);
-          next.add(r.id);
+          next.add(id);
           localStorage.setItem('reminders_fired', JSON.stringify([...next]));
           return next;
         });
@@ -119,9 +121,11 @@ function App() {
       const nowMs = Date.now();
       const toFire = [];
       list.forEach((r) => {
-        if (fired.has(r.id)) return;
+        const id = Number(r.id);
+        if (fired.has(id)) return;
         const remindAt = new Date(r.remind_at).getTime();
-        if (remindAt <= nowMs) toFire.push(r);
+        if (Number.isNaN(remindAt) || remindAt > nowMs) return;
+        toFire.push(r);
       });
       if (toFire.length === 0) return;
       toFire.forEach((r) => {
@@ -130,14 +134,14 @@ function App() {
       });
       setFiredIds((prev) => {
         const next = new Set(prev);
-        toFire.forEach((r) => next.add(r.id));
+        toFire.forEach((r) => next.add(Number(r.id)));
         try {
           localStorage.setItem('reminders_fired', JSON.stringify([...next]));
         } catch (_) {}
         return next;
       });
       firedIdsRef.current = new Set(firedIdsRef.current);
-      toFire.forEach((r) => firedIdsRef.current.add(r.id));
+      toFire.forEach((r) => firedIdsRef.current.add(Number(r.id)));
     };
     checkAndFire(); // فوراً ثم كل 30 ثانية
     const t = setInterval(checkAndFire, CHECK_INTERVAL_MS);
@@ -161,8 +165,10 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('reminders_token');
     localStorage.removeItem('reminders_user');
+    localStorage.removeItem('reminders_fired'); // حتى لا تُعتبر تنبيهات الجلسة الجديدة مُطلقة مسبقاً
     setUser(null);
     setReminders([]);
+    setFiredIds(new Set());
   };
 
   const handleAddReminder = async (payload) => {
@@ -228,6 +234,10 @@ function App() {
         error={error}
         onLogout={handleLogout}
         onRefresh={fetchReminders}
+        onClearFired={() => {
+          localStorage.removeItem('reminders_fired');
+          setFiredIds(new Set());
+        }}
         onAdd={handleAddReminder}
         onUpdate={handleUpdateReminder}
         onDelete={handleDeleteReminder}

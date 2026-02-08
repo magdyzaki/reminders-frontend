@@ -37,7 +37,7 @@ function formatDateTime(iso) {
   });
 }
 
-export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onAdd, onUpdate, onDelete }) {
+export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -62,8 +62,13 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
       </header>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
         مرحباً، {user?.name || user?.email}. التنبيهات تظهر مكتوبة ويُقرأ نصها بصوت افتراضي عند وقت التذكير.
-        لو لم يظهر تنبيه: اسمح بالإشعارات عندما يطلب المتصفح، وابقَ على هذه الصفحة مفتوحة، أو اضغط «تحديث» بعد وقت التنبيه.
+        لو لم يظهر تنبيه: اسمح بالإشعارات، أو اضغط «تحديث» بعد وقت التنبيه. لو استمرت المشكلة اضغط «مسح سجل التنبيهات» ثم حدّث.
       </p>
+      {onClearFired && (
+        <button type="button" style={{ ...styles.btn, marginBottom: 12, fontSize: 12 }} onClick={onClearFired}>
+          مسح سجل التنبيهات (للاختبار)
+        </button>
+      )}
       {error && <p style={styles.err}>{error}</p>}
 
       {!showForm && !editing && (
