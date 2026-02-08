@@ -100,6 +100,16 @@ function App() {
     return () => clearInterval(t);
   }, [user, fetchReminders]);
 
+  // عند العودة للصفحة: جلب التنبيهات فوراً (لإطلاق أي تنبيه فات وقته)
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchReminders();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user, fetchReminders]);
+
   // التحقق كل 30 ثانية من المواعيد وإطلاق التنبيه تلقائياً (بدون الحاجة لزر تحديث)
   useEffect(() => {
     if (!user || !reminders.length) return;
