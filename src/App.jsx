@@ -13,6 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastFired, setLastFired] = useState(null); // تنبيه ظهر الآن (داخل الصفحة لو الإشعار مرفوض)
+  const [pushStatus, setPushStatus] = useState(null); // null | 'ok' | 'fail' — حالة الاشتراك في Push (التنبيه مع الشاشة مطفية)
   const [firedIds, setFiredIds] = useState(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('reminders_fired') || '[]'));
@@ -67,7 +68,11 @@ function App() {
   // الاشتراك في Push مرة واحدة بعد الدخول (حتى يعمل التنبيه مع الشاشة مطفية)
   useEffect(() => {
     if (!user || !token) return;
-    subscribeToPush(api.getVapidPublic, api.subscribePush);
+    let cancelled = false;
+    subscribeToPush(api.getVapidPublic, api.subscribePush).then((ok) => {
+      if (!cancelled) setPushStatus(ok ? 'ok' : 'fail');
+    });
+    return () => { cancelled = true; };
   }, [user, token]);
 
   // التحقق من مواعيد التنبيهات وإطلاق الإشعار + TTS (عند كل تحديث للقائمة أو السجل)
@@ -252,6 +257,12 @@ function App() {
           await requestNotificationPermission();
           showReminderNotification(firstReminder.title, firstReminder.body || '');
           setLastFired({ title: firstReminder.title, body: firstReminder.body || '' });
+        }}
+        pushStatus={pushStatus}
+        onRetryPush={async () => {
+          setPushStatus(null);
+          const ok = await subscribeToPush(api.getVapidPublic, api.subscribePush);
+          setPushStatus(ok ? 'ok' : 'fail');
         }}
         onAdd={handleAddReminder}
         onUpdate={handleUpdateReminder}

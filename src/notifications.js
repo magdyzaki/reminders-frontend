@@ -55,11 +55,12 @@ function urlBase64ToUint8Array(base64String) {
 /**
  * الاشتراك في إشعارات الدفع (حتى تعمل مع الشاشة مطفية)
  * يُستدعى بعد تسجيل الدخول مع getVapidPublic و subscribePush من api
+ * @returns {Promise<boolean>} true إذا تم الاشتراك بنجاح
  */
 export async function subscribeToPush(getVapidPublic, subscribePush) {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
   const permission = await requestNotificationPermission();
-  if (!permission) return;
+  if (!permission) return false;
   try {
     const reg = await navigator.serviceWorker.ready;
     const publicKey = await getVapidPublic();
@@ -68,8 +69,10 @@ export async function subscribeToPush(getVapidPublic, subscribePush) {
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
     await subscribePush(sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: sub.getKey('p256dh') && sub.getKey('auth') ? { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) } : {} });
+    return true;
   } catch (e) {
     console.warn('Push subscribe failed:', e);
+    return false;
   }
 }
 
