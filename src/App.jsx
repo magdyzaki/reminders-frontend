@@ -5,7 +5,7 @@ import Login from './Login';
 import RemindersList from './RemindersList';
 
 const POLL_MS = 60 * 1000; // كل دقيقة جلب من السيرفر
-const CHECK_INTERVAL_MS = 5 * 1000; // كل 5 ثوانٍ التحقق من المواعيد وإطلاق التنبيه
+const CHECK_INTERVAL_MS = 2 * 1000; // كل 2 ثانية (موبايل يبطّئ الفواصل فنجعلها قصيرة)
 
 function App() {
   const [user, setUser] = useState(null);
@@ -70,28 +70,30 @@ function App() {
     subscribeToPush(api.getVapidPublic, api.subscribePush);
   }, [user, token]);
 
-  // التحقق من مواعيد التنبيهات وإطلاق الإشعار + TTS
+  // التحقق من مواعيد التنبيهات وإطلاق الإشعار + TTS (عند كل تحديث للقائمة أو السجل)
   useEffect(() => {
     if (!reminders.length) return;
-
-    const now = new Date();
-    const nowMs = now.getTime();
-
+    const nowMs = Date.now();
+    const toFire = [];
     reminders.forEach((r) => {
       const id = Number(r.id);
       if (firedIds.has(id)) return;
       const remindAtMs = new Date(r.remind_at).getTime();
       if (Number.isNaN(remindAtMs)) return;
-      if (remindAtMs <= nowMs) {
-        setFiredIds((prev) => {
-          const next = new Set(prev);
-          next.add(id);
-          localStorage.setItem('reminders_fired', JSON.stringify([...next]));
-          return next;
-        });
-        showReminderNotification(r.title, r.body || '');
-        setLastFired({ title: r.title, body: r.body || '' });
-      }
+      if (remindAtMs <= nowMs) toFire.push(r);
+    });
+    if (toFire.length === 0) return;
+    toFire.forEach((r) => {
+      showReminderNotification(r.title, r.body || '');
+      setLastFired({ title: r.title, body: r.body || '' });
+    });
+    setFiredIds((prev) => {
+      const next = new Set(prev);
+      toFire.forEach((r) => next.add(Number(r.id)));
+      try {
+        localStorage.setItem('reminders_fired', JSON.stringify([...next]));
+      } catch (_) {}
+      return next;
     });
   }, [reminders, firedIds]);
 
@@ -101,6 +103,13 @@ function App() {
     const t = setInterval(fetchReminders, POLL_MS);
     return () => clearInterval(t);
   }, [user, fetchReminders]);
+
+  // عند وجود تنبيهات: جلب كل 10 ثوانٍ حتى لا نفوت موعد التنبيه (المتصفح قد يبطّئ setInterval على الموبايل)
+  useEffect(() => {
+    if (!user || !reminders.length) return;
+    const t = setInterval(fetchReminders, 10 * 1000);
+    return () => clearInterval(t);
+  }, [user, reminders.length, fetchReminders]);
 
   // عند العودة للصفحة: جلب التنبيهات فوراً (لإطلاق أي تنبيه فات وقته)
   useEffect(() => {
@@ -112,7 +121,7 @@ function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [user, fetchReminders]);
 
-  // التحقق كل 30 ثانية من المواعيد وإطلاق التنبيه تلقائياً (بدون الحاجة لزر تحديث)
+  // التحقق كل بضع ثوانٍ من المواعيد وإطلاق التنبيه تلقائياً
   useEffect(() => {
     if (!user || !reminders.length) return;
     const checkAndFire = () => {

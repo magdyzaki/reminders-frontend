@@ -61,7 +61,12 @@ export default function ReminderForm({ initial, onSave, onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    const at = new Date(remind_at).toISOString();
+    // تفسير الوقت كتوقيت محلي دائماً (Safari/موبايل يفسّر "YYYY-MM-DDTHH:mm" كـ UTC فيسبب عدم إطلاق التنبيه)
+    const [datePart, timePart] = (remind_at || '').split('T');
+    const [y, m, d] = (datePart || '').split('-').map(Number);
+    const [h, min] = (timePart || '0:0').split(':').map(Number);
+    const localDate = new Date(y, m - 1, d, h, min || 0, 0, 0);
+    const at = localDate.toISOString();
     onSave({ title: title.trim(), body: body.trim(), remind_at: at, repeat: repeat.trim() || null });
   };
 
