@@ -91,4 +91,3 @@ export async function subscribePush(subscription) {
   if (!res.ok) throw new Error(data.error || 'فشل تسجيل الاشتراك');
   return data;
 }
-
