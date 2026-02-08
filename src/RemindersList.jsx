@@ -37,7 +37,7 @@ function formatDateTime(iso) {
   });
 }
 
-export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, onAdd, onUpdate, onDelete }) {
+export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, pushStatus, onRetryPush, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -63,7 +63,24 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
         مرحباً، {user?.name || user?.email}. التنبيهات تظهر مكتوبة ويُقرأ نصها بصوت افتراضي عند وقت التذكير.
         لو لم يظهر تنبيه: اسمح بالإشعارات، أو اضغط «تحديث» بعد وقت التنبيه. لو استمرت المشكلة اضغط «مسح سجل التنبيهات» ثم حدّث.
+        <span style={{ display: 'block', marginTop: 6, fontSize: 11, opacity: 0.7 }}>نسخة واجهة: 2</span>
       </p>
+      {pushStatus !== null && (
+        <div style={{ fontSize: 13, marginBottom: 10 }}>
+          {pushStatus === 'ok' ? (
+            <span style={{ color: 'var(--primary-light)' }}>التنبيه مع الشاشة مطفية: مفعّل.</span>
+          ) : (
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>التنبيه مع الشاشة مطفية غير مفعّل. </span>
+              {onRetryPush && (
+                <button type="button" style={{ ...styles.btn, marginTop: 6 }} onClick={onRetryPush}>
+                  إعادة المحاولة
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {onClearFired && (
         <button type="button" style={{ ...styles.btn, marginBottom: 8, fontSize: 12 }} onClick={onClearFired}>
           مسح سجل التنبيهات (للاختبار)
