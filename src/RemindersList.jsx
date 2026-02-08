@@ -37,7 +37,7 @@ function formatDateTime(iso) {
   });
 }
 
-export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onAdd, onUpdate, onDelete }) {
+export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -65,8 +65,17 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
         لو لم يظهر تنبيه: اسمح بالإشعارات، أو اضغط «تحديث» بعد وقت التنبيه. لو استمرت المشكلة اضغط «مسح سجل التنبيهات» ثم حدّث.
       </p>
       {onClearFired && (
-        <button type="button" style={{ ...styles.btn, marginBottom: 12, fontSize: 12 }} onClick={onClearFired}>
+        <button type="button" style={{ ...styles.btn, marginBottom: 8, fontSize: 12 }} onClick={onClearFired}>
           مسح سجل التنبيهات (للاختبار)
+        </button>
+      )}
+      {onTestNotification && reminders.length > 0 && (
+        <button
+          type="button"
+          style={{ ...styles.btn, marginBottom: 12, fontSize: 12, border: '1px solid var(--primary)' }}
+          onClick={() => onTestNotification(reminders[0])}
+        >
+          تجربة تنبيه الآن (أول تنبيه في القائمة)
         </button>
       )}
       {error && <p style={styles.err}>{error}</p>}

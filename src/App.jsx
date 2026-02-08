@@ -5,7 +5,7 @@ import Login from './Login';
 import RemindersList from './RemindersList';
 
 const POLL_MS = 60 * 1000; // كل دقيقة جلب من السيرفر
-const CHECK_INTERVAL_MS = 15 * 1000; // كل 15 ثانية التحقق من المواعيد وإطلاق التنبيه
+const CHECK_INTERVAL_MS = 5 * 1000; // كل 5 ثوانٍ التحقق من المواعيد وإطلاق التنبيه
 
 function App() {
   const [user, setUser] = useState(null);
@@ -237,6 +237,12 @@ function App() {
         onClearFired={() => {
           localStorage.removeItem('reminders_fired');
           setFiredIds(new Set());
+        }}
+        onTestNotification={async (firstReminder) => {
+          if (!firstReminder) return;
+          await requestNotificationPermission();
+          showReminderNotification(firstReminder.title, firstReminder.body || '');
+          setLastFired({ title: firstReminder.title, body: firstReminder.body || '' });
         }}
         onAdd={handleAddReminder}
         onUpdate={handleUpdateReminder}
