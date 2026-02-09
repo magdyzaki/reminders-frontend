@@ -11,8 +11,8 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       manifest: {
-        name: 'تنبيهاتي',
-        short_name: 'تنبيهات',
+        name: 'Karas — تنبيهات',
+        short_name: 'Karas',
         description: 'تنبيهات مكتوبة مع تذكير بصوت افتراضي - مزامنة بين الموبايل والكمبيوتر',
         theme_color: '#1a5f4a',
         background_color: '#0f2e26',
