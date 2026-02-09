@@ -66,7 +66,8 @@ export async function subscribeToPush(getVapidPublic, subscribePush) {
   }
   try {
     const reg = await navigator.serviceWorker.ready;
-    const publicKey = await getVapidPublic();
+    let publicKey = await getVapidPublic();
+    if (typeof publicKey === 'string') publicKey = publicKey.trim().replace(/\s/g, '');
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
@@ -80,6 +81,9 @@ export async function subscribeToPush(getVapidPublic, subscribePush) {
     }
     if (msg.includes('فشل تسجيل الاشتراك') || msg.includes('401') || msg.includes('انتهت الجلسة')) {
       return { ok: false, reason: 'انتهت الجلسة أو فشل التسجيل. سجّل دخولاً مرة أخرى' };
+    }
+    if (msg.includes('push service') || msg.includes('registration failed')) {
+      return { ok: false, reason: 'خطأ من خدمة الإشعارات. جرّب: مسح بيانات الموقع ثم إعادة المحاولة، أو توليد مفاتيح VAPID جديدة في Koyeb (بدون مسافات أو أسطر)' };
     }
     return { ok: false, reason: msg.slice(0, 80) };
   }

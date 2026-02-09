@@ -42,6 +42,7 @@ export default function ReminderForm({ initial, onSave, onCancel }) {
   const [body, setBody] = useState('');
   const [remind_at, setRemind_at] = useState('');
   const [repeat, setRepeat] = useState('');
+  const [notes, setNotes] = useState('');
   const [listeningFor, setListeningFor] = useState(null); // 'title' | 'body' | null
   const recognitionRef = useRef(null);
 
@@ -51,6 +52,7 @@ export default function ReminderForm({ initial, onSave, onCancel }) {
       setBody(initial.body || '');
       setRemind_at(initial.remind_at ? toLocalISO(initial.remind_at) : '');
       setRepeat(initial.repeat || '');
+      setNotes(initial.notes || '');
     } else {
       const next = new Date();
       next.setMinutes(next.getMinutes() + 5);
@@ -67,7 +69,7 @@ export default function ReminderForm({ initial, onSave, onCancel }) {
     const [h, min] = (timePart || '0:0').split(':').map(Number);
     const localDate = new Date(y, m - 1, d, h, min || 0, 0, 0);
     const at = localDate.toISOString();
-    onSave({ title: title.trim(), body: body.trim(), remind_at: at, repeat: repeat.trim() || null });
+    onSave({ title: title.trim(), body: body.trim(), remind_at: at, repeat: repeat.trim() || null, notes: notes.trim() });
   };
 
   const startVoice = (field) => {
@@ -149,6 +151,14 @@ export default function ReminderForm({ initial, onSave, onCancel }) {
         <option value="كل أسبوع">كل أسبوع</option>
         <option value="كل شهر">كل شهر</option>
       </select>
+      <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: 'var(--text-muted)' }}>ملاحظات (اختياري)</label>
+      <textarea
+        placeholder="مثال: تم الإرسال بتاريخ ... أو لم يتم الإرسال بعد"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{ ...styles.input, minHeight: 60, resize: 'vertical' }}
+        rows={2}
+      />
       <div style={styles.row}>
         <button type="submit" style={{ ...styles.btn, ...styles.primary }}>حفظ</button>
         <button type="button" style={{ ...styles.btn, ...styles.secondary }} onClick={onCancel}>إلغاء</button>

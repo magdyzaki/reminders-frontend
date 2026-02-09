@@ -120,6 +120,32 @@ function App() {
     return () => clearInterval(t);
   }, [user, reminders.length, fetchReminders]);
 
+  // عند فتح التطبيق من نقر على الإشعار: تشغيل التنبيه (صوت + إشعار) حتى لو الموعد عدى
+  useEffect(() => {
+    if (!user || !reminders.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const playId = params.get('playReminder');
+    if (!playId) return;
+    const id = Number(playId);
+    if (!Number.isFinite(id)) return;
+    const r = reminders.find((x) => Number(x.id) === id);
+    if (!r) return;
+    showReminderNotification(r.title, r.body || '');
+    setLastFired({ title: r.title, body: r.body || '' });
+    setFiredIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('reminders_fired', JSON.stringify([...next]));
+      } catch (_) {}
+      return next;
+    });
+    // إزالة المعامل من الرابط حتى لا يُعاد التشغيل عند التحديث
+    const url = new URL(window.location.href);
+    url.searchParams.delete('playReminder');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [user, reminders]);
+
   // عند العودة للصفحة: جلب التنبيهات فوراً (لإطلاق أي تنبيه فات وقته)
   useEffect(() => {
     if (!user) return;

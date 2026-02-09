@@ -41,22 +41,22 @@ export async function getReminders() {
   return data.reminders || [];
 }
 
-export async function addReminder({ title, body, remind_at, repeat }) {
+export async function addReminder({ title, body, remind_at, repeat, notes }) {
   const res = await fetch(`${API_BASE}/api/reminders`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ title, body: body || '', remind_at, repeat: repeat || null })
+    body: JSON.stringify({ title, body: body || '', remind_at, repeat: repeat || null, notes: notes || '' })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'فشل إضافة التنبيه');
   return data;
 }
 
-export async function updateReminder(id, { title, body, remind_at, repeat }) {
+export async function updateReminder(id, { title, body, remind_at, repeat, notes }) {
   const res = await fetch(`${API_BASE}/api/reminders/${id}`, {
     method: 'PUT',
     headers: headers(),
-    body: JSON.stringify({ title, body, remind_at, repeat })
+    body: JSON.stringify({ title, body, remind_at, repeat, notes })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'فشل التعديل');
