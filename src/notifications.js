@@ -54,13 +54,16 @@ function urlBase64ToUint8Array(base64String) {
 
 /**
  * الاشتراك في إشعارات الدفع (حتى تعمل مع الشاشة مطفية)
- * يُستدعى بعد تسجيل الدخول مع getVapidPublic و subscribePush من api
- * @returns {Promise<boolean>} true إذا تم الاشتراك بنجاح
+ * @returns {Promise<{ok: boolean, reason?: string}>}
  */
 export async function subscribeToPush(getVapidPublic, subscribePush) {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return { ok: false, reason: 'المتصفح لا يدعم إشعارات الدفع' };
+  }
   const permission = await requestNotificationPermission();
-  if (!permission) return false;
+  if (!permission) {
+    return { ok: false, reason: 'سماح بالإشعارات من إعدادات الموقع أولاً' };
+  }
   try {
     const reg = await navigator.serviceWorker.ready;
     const publicKey = await getVapidPublic();
@@ -69,10 +72,16 @@ export async function subscribeToPush(getVapidPublic, subscribePush) {
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
     await subscribePush(sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: sub.getKey('p256dh') && sub.getKey('auth') ? { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) } : {} });
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.warn('Push subscribe failed:', e);
-    return false;
+    const msg = e && e.message ? e.message : String(e);
+    if (msg.includes('فشل جلب مفتاح') || msg.includes('fetch') || msg.includes('Network')) {
+      return { ok: false, reason: 'لا يمكن الاتصال بالسيرفر. تحقق من VITE_API_URL على Vercel (عنوان الباكند)' };
+    }
+    if (msg.includes('فشل تسجيل الاشتراك') || msg.includes('401') || msg.includes('انتهت الجلسة')) {
+      return { ok: false, reason: 'انتهت الجلسة أو فشل التسجيل. سجّل دخولاً مرة أخرى' };
+    }
+    return { ok: false, reason: msg.slice(0, 80) };
   }
 }
 

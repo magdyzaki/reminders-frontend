@@ -13,7 +13,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastFired, setLastFired] = useState(null); // تنبيه ظهر الآن (داخل الصفحة لو الإشعار مرفوض)
-  const [pushStatus, setPushStatus] = useState(null); // null | 'ok' | 'fail' — حالة الاشتراك في Push (التنبيه مع الشاشة مطفية)
+  const [pushStatus, setPushStatus] = useState(null); // null | 'ok' | 'fail'
+  const [pushFailReason, setPushFailReason] = useState(''); // سبب فشل الاشتراك في Push
   const [firedIds, setFiredIds] = useState(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('reminders_fired') || '[]'));
@@ -69,8 +70,11 @@ function App() {
   useEffect(() => {
     if (!user || !token) return;
     let cancelled = false;
-    subscribeToPush(api.getVapidPublic, api.subscribePush).then((ok) => {
-      if (!cancelled) setPushStatus(ok ? 'ok' : 'fail');
+    subscribeToPush(api.getVapidPublic, api.subscribePush).then((result) => {
+      if (!cancelled) {
+        setPushStatus(result.ok ? 'ok' : 'fail');
+        setPushFailReason(result.reason || '');
+      }
     });
     return () => { cancelled = true; };
   }, [user, token]);
@@ -259,10 +263,13 @@ function App() {
           setLastFired({ title: firstReminder.title, body: firstReminder.body || '' });
         }}
         pushStatus={pushStatus}
+        pushFailReason={pushFailReason}
         onRetryPush={async () => {
           setPushStatus(null);
-          const ok = await subscribeToPush(api.getVapidPublic, api.subscribePush);
-          setPushStatus(ok ? 'ok' : 'fail');
+          setPushFailReason('');
+          const result = await subscribeToPush(api.getVapidPublic, api.subscribePush);
+          setPushStatus(result.ok ? 'ok' : 'fail');
+          setPushFailReason(result.reason || '');
         }}
         onAdd={handleAddReminder}
         onUpdate={handleUpdateReminder}

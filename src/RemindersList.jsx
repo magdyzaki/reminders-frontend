@@ -37,7 +37,7 @@ function formatDateTime(iso) {
   });
 }
 
-export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, pushStatus, onRetryPush, onAdd, onUpdate, onDelete }) {
+export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, pushStatus, pushFailReason, onRetryPush, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -72,6 +72,9 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
           ) : (
             <div>
               <span style={{ color: 'var(--text-muted)' }}>التنبيه مع الشاشة مطفية غير مفعّل. </span>
+              {pushFailReason && (
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{pushFailReason}</span>
+              )}
               {onRetryPush && (
                 <button type="button" style={{ ...styles.btn, marginTop: 6 }} onClick={onRetryPush}>
                   إعادة المحاولة
