@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as api from './api';
 import ReminderForm from './ReminderForm';
 
 const styles = {
@@ -48,11 +49,17 @@ function todayStr() {
   return new Date().toLocaleDateString('ar-EG', { dateStyle: 'short' });
 }
 
-export default function RemindersList({ user, reminders, error, onLogout, onRefresh, onClearFired, onTestNotification, pushStatus, pushFailReason, onRetryPush, onAdd, onUpdate, onDelete }) {
+export default function RemindersList({ user, reminders, error, isAdmin, onLogout, onRefresh, onError, onClearFired, onTestNotification, pushStatus, pushFailReason, onRetryPush, onAdd, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [openNotesId, setOpenNotesId] = useState(null);
   const [notesDraft, setNotesDraft] = useState({});
+  const [inviteModal, setInviteModal] = useState(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [blockedModal, setBlockedModal] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [blockUserModal, setBlockUserModal] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
 
   const handleSave = async (payload) => {
     if (editing) {
@@ -64,20 +71,92 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
     }
   };
 
+  const handleCreateInvite = async () => {
+    if (inviteLoading) return;
+    setInviteLoading(true);
+    if (onError) onError('');
+    try {
+      const data = await api.createInviteLink();
+      const link = window.location.origin + '/invite/' + (data.token || '');
+      setInviteModal({ link, copied: false });
+    } catch (e) {
+      if (onError) onError(e.message || 'فشل إنشاء الرابط');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (inviteModal?.link) {
+      navigator.clipboard?.writeText(inviteModal.link).then(() => setInviteModal((p) => (p ? { ...p, copied: true } : null)));
+    }
+  };
+
+  const loadBlocked = async () => {
+    try {
+      const list = await api.getBlockedUsers();
+      setBlockedUsers(list);
+      if (onError) onError('');
+    } catch (e) {
+      if (onError) onError(e.message || 'غير مصرح');
+      setBlockedUsers([]);
+    }
+  };
+
+  const loadAllUsers = async () => {
+    try {
+      const list = await api.getAllUsers();
+      setAllUsers(list);
+      if (onError) onError('');
+    } catch (e) {
+      if (onError) onError(e.message || 'غير مصرح');
+      setAllUsers([]);
+    }
+  };
+
+  const handleBlock = async (targetId) => {
+    if (!confirm('إيقاف وصول هذا المستخدم؟')) return;
+    try {
+      await api.blockUser(targetId);
+      setBlockedUsers((prev) => [...prev, allUsers.find((u) => u.id === targetId)].filter(Boolean));
+      setAllUsers((prev) => prev.filter((u) => u.id !== targetId));
+    } catch (e) {
+      if (onError) onError(e.message || 'فشل');
+    }
+  };
+
+  const handleUnblock = async (targetId) => {
+    try {
+      await api.unblockUser(targetId);
+      setBlockedUsers((prev) => prev.filter((u) => u.id !== targetId));
+    } catch (e) {
+      if (onError) onError(e.message || 'فشل');
+    }
+  };
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>Karas — تنبيهات</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button style={styles.btn} onClick={onRefresh}>تحديث</button>
-          <button style={styles.btn} onClick={onLogout}>خروج</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* أزرار الأدمن — تظهر للجميع، والباكند يرفض غير المسؤولين */}
+          <>
+            <button type="button" style={{ ...styles.btn, background: 'var(--primary)', color: '#fff' }} onClick={handleCreateInvite} disabled={inviteLoading} title="رابط للآيفون والأندرويد">{inviteLoading ? '...' : '📱 رابط دعوة (آيفون/أندرويد)'}</button>
+            <button type="button" style={styles.btn} onClick={() => { setBlockedModal(true); loadBlocked(); }}>الموقوفون</button>
+            <button type="button" style={{ ...styles.btn, background: 'rgba(248,81,73,0.2)', color: '#f85149' }} onClick={() => { setBlockUserModal(true); loadAllUsers(); loadBlocked(); }}>إيقاف مستخدم</button>
+          </>
+          <button type="button" style={styles.btn} onClick={onRefresh}>تحديث</button>
+          <button type="button" style={styles.btn} onClick={onLogout}>خروج</button>
         </div>
       </header>
+      {isAdmin && (
+        <p style={{ fontSize: 12, color: 'var(--primary-light)', marginBottom: 8, padding: '6px 10px', background: 'rgba(26,95,74,0.15)', borderRadius: 8, display: 'inline-block' }}>✓ مسؤول — يمكنك استخدام رابط الدعوة وإيقاف المستخدمين</p>
+      )}
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
         مرحباً، {user?.name || user?.email}. التنبيهات تظهر مكتوبة ويُقرأ نصها بصوت افتراضي عند وقت التذكير.
         جميع التنبيهات تبقى في القائمة ولا تُحذف تلقائياً؛ يمكنك حذف أي تنبيه يدوياً بزر «حذف».
         لو لم يظهر تنبيه: اسمح بالإشعارات، أو اضغط «تحديث» بعد وقت التنبيه. لو استمرت المشكلة اضغط «مسح سجل التنبيهات» ثم حدّث.
-        <span style={{ display: 'block', marginTop: 6, fontSize: 11, opacity: 0.7 }}>نسخة واجهة: 2</span>
+        <span style={{ display: 'block', marginTop: 6, fontSize: 11, opacity: 0.7 }}>نسخة واجهة: 3</span>
       </p>
       {pushStatus !== null && (
         <div style={{ fontSize: 13, marginBottom: 10 }}>
@@ -190,6 +269,69 @@ export default function RemindersList({ user, reminders, error, onLogout, onRefr
           );
         })}
       </div>
+
+      {inviteModal && (
+        <div onClick={() => setInviteModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, maxWidth: 420, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>رابط دعوة — للآيفون والأندرويد</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>الرابط يعمل على الجهازين. استخدمه مرة واحدة ولا تُشاركه مع أكثر من شخص.</p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button type="button" onClick={handleCreateInvite} disabled={inviteLoading} style={{ flex: 1, padding: 12, background: inviteLoading ? 'var(--text-muted)' : 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: inviteLoading ? 'wait' : 'pointer', fontSize: 14 }}>{inviteLoading ? '...' : '📱 إنشاء رابط للآيفون'}</button>
+              <button type="button" onClick={handleCreateInvite} disabled={inviteLoading} style={{ flex: 1, padding: 12, background: inviteLoading ? 'var(--text-muted)' : 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: inviteLoading ? 'wait' : 'pointer', fontSize: 14 }}>{inviteLoading ? '...' : '🤖 إنشاء رابط للأندرويد'}</button>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>الرابط نفسه يعمل على الآيفون والأندرويد — اختر حسب من سيرسله له صديقك.</p>
+            {inviteModal.link && (
+              <>
+                <input type="text" readOnly value={inviteModal.link} style={{ width: '100%', padding: 10, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', marginBottom: 12, boxSizing: 'border-box' }} />
+                <div style={{ background: 'rgba(0,0,0,0.08)', borderRadius: 8, padding: 12, marginBottom: 12, textAlign: 'right' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>تعليمات للصديق:</p>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}><strong>آيفون:</strong> اضغط زر المشاركة → إضافة إلى الشاشة الرئيسية → إضافة</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}><strong>أندرويد:</strong> في Chrome: القائمة ⋮ → إضافة إلى الشاشة الرئيسية → إضافة</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={copyInviteLink} style={{ flex: 1, padding: 10, background: 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14 }}>{inviteModal.copied ? 'تم النسخ ✓' : 'نسخ الرابط'}</button>
+                  <button type="button" onClick={() => setInviteModal(null)} style={{ padding: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', cursor: 'pointer' }}>إغلاق</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {blockedModal && (
+        <div onClick={() => setBlockedModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, maxWidth: 400, width: '100%', maxHeight: '70vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>المستخدمون الموقوفون</h3>
+            {blockedUsers.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>لا يوجد موقوفون</p> : blockedUsers.map((u) => (
+              <div key={u.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{u.name || u.email || '—'}</span>
+                <button type="button" onClick={() => handleUnblock(u.id)} style={{ padding: '6px 12px', background: 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 12 }}>إعادة التفعيل</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setBlockedModal(false)} style={{ marginTop: 12, padding: '8px 16px' }}>إغلاق</button>
+          </div>
+        </div>
+      )}
+
+      {blockUserModal && (
+        <div onClick={() => setBlockUserModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, maxWidth: 400, width: '100%', maxHeight: '70vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>إيقاف مستخدم</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>اختر المستخدم لإيقاف وصوله</p>
+            {allUsers.filter((u) => u.id !== user?.id && !blockedUsers.some((b) => b.id === u.id)).length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>لا يوجد مستخدمون آخرون</p>
+            ) : (
+              allUsers.filter((u) => u.id !== user?.id && !blockedUsers.some((b) => b.id === u.id)).map((u) => (
+                <div key={u.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{u.name || u.email || '—'}</span>
+                  <button type="button" onClick={() => handleBlock(u.id)} style={{ padding: '6px 12px', background: 'rgba(248,81,73,0.3)', color: '#f85149', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}>إيقاف</button>
+                </div>
+              ))
+            )}
+            <button type="button" onClick={() => setBlockUserModal(false)} style={{ marginTop: 12, padding: '8px 16px' }}>إغلاق</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
