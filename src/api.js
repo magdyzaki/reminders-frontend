@@ -8,6 +8,7 @@ function headers() {
   const t = getToken();
   return {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
     ...(t ? { Authorization: `Bearer ${t}` } : {})
   };
 }
@@ -75,7 +76,7 @@ export async function deleteReminder(id) {
 }
 
 export async function getVapidPublic() {
-  const res = await fetch(`${API_BASE}/api/push/vapid-public`);
+  const res = await fetch(`${API_BASE}/api/push/vapid-public`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'فشل جلب مفتاح Push');
   return data.publicKey;
@@ -104,12 +105,12 @@ export async function createInviteLink() {
 }
 
 export async function checkInviteLink(token) {
-  const res = await fetch(`${API_BASE}/api/check-invite/${encodeURIComponent(token)}`);
+  const res = await fetch(`${API_BASE}/api/check-invite/${encodeURIComponent(token)}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
   return res.json().catch(() => ({}));
 }
 
 export async function consumeInviteLink(token) {
-  const res = await fetch(`${API_BASE}/api/consume-invite/${encodeURIComponent(token)}`, { method: 'POST' });
+  const res = await fetch(`${API_BASE}/api/consume-invite/${encodeURIComponent(token)}`, { method: 'POST', headers: { 'ngrok-skip-browser-warning': 'true' } });
   return res.json().catch(() => ({}));
 }
 
