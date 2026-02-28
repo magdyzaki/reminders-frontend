@@ -1,22 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as api from './api';
 
-export default function InvitePage({ token, onValid }) {
-  const [status, setStatus] = useState('valid');
+export default function InvitePage({ token, onGoToRegister }) {
+  const [status, setStatus] = useState('checking');
   const [error, setError] = useState('');
-  const [consuming, setConsuming] = useState(false);
 
-  const handleGoToApp = async () => {
-    if (!token || consuming) return;
-    setConsuming(true);
-    const data = await api.consumeInviteLink(token);
-    if (data.ok) onValid?.();
-    else {
+  useEffect(() => {
+    if (!token) return;
+    api.checkInviteLink(token).then((data) => {
+      if (data.valid && !data.used) setStatus('valid');
+      else {
+        setStatus('invalid');
+        setError(data.error || 'الرابط مُستهلَك أو غير صالح');
+      }
+    }).catch(() => {
       setStatus('invalid');
-      setError(data.error || 'الرابط مُستهلَك أو غير صالح');
-    }
-    setConsuming(false);
-  };
+      setError('تعذّر التحقق من الرابط');
+    });
+  }, [token]);
+
+  if (status === 'checking') {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <p>جاري التحقق...</p>
+      </div>
+    );
+  }
 
   if (!token) {
     return (
@@ -46,7 +55,7 @@ export default function InvitePage({ token, onValid }) {
             <p style={{ margin: 0, fontSize: 15 }}>3. اضغط <strong>إضافة</strong></p>
           </div>
         )}
-        <button type="button" onClick={handleGoToApp} disabled={consuming} style={{ padding: '12px 24px', background: consuming ? 'var(--text-muted)' : 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: consuming ? 'wait' : 'pointer', fontSize: 16 }}>{consuming ? '...' : 'انتقل إلى التطبيق'}</button>
+        <button type="button" onClick={() => onGoToRegister?.(token)} style={{ padding: '12px 24px', background: 'var(--primary)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 16 }}>انتقل للتسجيل</button>
       </div>
     );
   }

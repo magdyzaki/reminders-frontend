@@ -52,8 +52,14 @@ const styles = {
   err: { color: 'var(--danger)', fontSize: 14, marginBottom: 12, textAlign: 'center' }
 };
 
-export default function Login({ onLogin }) {
-  const [mode, setMode] = useState('login');
+function parseInviteTokenFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('token') || null;
+}
+
+export default function Login({ onLogin, inviteToken: inviteTokenProp }) {
+  const [mode, setMode] = useState(inviteTokenProp ? 'register' : 'login');
+  const inviteToken = inviteTokenProp || parseInviteTokenFromUrl();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -75,7 +81,7 @@ export default function Login({ onLogin }) {
         const data = await api.login(email, password);
         onLogin(data);
       } else {
-        const data = await api.register(email, password, name);
+        const data = await api.register(email, password, name, inviteToken || '');
         onLogin(data);
       }
     } catch (e) {
@@ -90,7 +96,7 @@ export default function Login({ onLogin }) {
       <div style={styles.card}>
         <h1 style={styles.title}>تنبيهاتي</h1>
         <p style={styles.sub}>
-          {mode === 'login' ? 'سجّل الدخول للمزامنة بين الموبايل والكمبيوتر' : 'إنشاء حساب جديد'}
+          {mode === 'login' ? 'سجّل الدخول للمزامنة بين الموبايل والكمبيوتر' : (inviteToken ? 'التسجيل يتطلب رابط دعوة — تم التحقق من الرابط ✓' : 'إنشاء حساب جديد')}
         </p>
         {error && <p style={styles.err}>{error}</p>}
         <div style={{ marginBottom: 16 }}>
@@ -136,6 +142,11 @@ export default function Login({ onLogin }) {
             {loading ? 'جاري...' : mode === 'login' ? 'تسجيل الدخول' : 'إنشاء الحساب'}
           </button>
         </form>
+        {mode === 'register' && !inviteToken && (
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 12, textAlign: 'center' }}>
+            التسجيل يتطلب رابط دعوة من المسؤول
+          </p>
+        )}
         <button type="button" style={styles.link} onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
           {mode === 'login' ? 'إنشاء حساب جديد' : 'لديك حساب؟ تسجيل الدخول'}
         </button>

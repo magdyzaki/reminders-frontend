@@ -25,6 +25,7 @@ function App() {
   const [pushStatus, setPushStatus] = useState(null); // null | 'ok' | 'fail'
   const [pushFailReason, setPushFailReason] = useState(''); // سبب فشل الاشتراك في Push
   const [inviteToken, setInviteToken] = useState(() => parseInviteToken());
+  const [registerWithToken, setRegisterWithToken] = useState(null);
   const [firedIds, setFiredIds] = useState(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('reminders_fired') || '[]'));
@@ -250,13 +251,19 @@ function App() {
     });
   };
 
-  const handleInviteValid = () => {
+  const handleGoToRegister = (token) => {
+    setRegisterWithToken(token);
     setInviteToken(null);
     window.history.replaceState({}, '', '/');
   };
 
+  const loginInviteToken = registerWithToken || (() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('token');
+  })();
+
   if (inviteToken) {
-    return <InvitePage token={inviteToken} onValid={handleInviteValid} />;
+    return <InvitePage token={inviteToken} onGoToRegister={handleGoToRegister} />;
   }
 
   if (loading && !user) {
@@ -268,7 +275,7 @@ function App() {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} inviteToken={loginInviteToken} />;
   }
 
   return (

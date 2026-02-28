@@ -54,11 +54,13 @@ export async function login(email, password) {
   return data;
 }
 
-export async function register(email, password, name = '') {
+export async function register(email, password, name = '', inviteToken = '') {
+  const body = { email, password, name };
+  if (inviteToken && inviteToken.trim()) body.inviteToken = inviteToken.trim();
   const res = await fetchWithRetry(`${getApiBase()}/api/auth/register`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ email, password, name })
+    body: JSON.stringify(body)
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'فشل التسجيل');
